@@ -54,7 +54,7 @@ Test log loss bottoms at 0.364 on round 65 and then climbs for the remaining rou
 
 ### Coming next
 <hr>
-3D CNN, Recurrent Neural Networks and Transformers.
+Ridge Regression, Lasso Regression, Elastic Net Regression, Naive Bayes, Quadratic Discriminant Analysis, Linear Discriminant Analysis, DBSCAN, Gaussian Mixture Models, BIRCH, Principal Component Analysis (PCA), Individual Component Analysis (ICA), t-SNE, Dirichlet Process Mixture Models, Basic Neural Networks (with Multi-layer Perceptron), 3D CNN, Recurrent Neural Networks, LSTMs, Transformers Network (Encoders, Decoders), GANs, BERT, Basic RecSys.
 
 ## Datasets 
 ### Iris Flower Classification 
