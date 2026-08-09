@@ -28,6 +28,30 @@ This dataset was chosen because it is a case where K-Means fails. The skin and n
 
 Both directions are written out by hand. The forward pass loops over the 36 output positions and handles the whole batch at each one, and the backward pass reverses it: the gradient for a filter is the patch it was looking at, and pooling passes gradient back only to the value that won its block. A finite-difference check in the notebook confirms the hand-written derivatives match the loss to eight decimal places. It reaches 97.9% on the held-out digits after 30 epochs, which takes a couple of seconds. The learned filters are drawn out at the end - several came out as edge detectors without being told to.
 
+### Linear Regression
+<hr>
+`linear_regression_from_scratch.ipynb` - predicts fuel economy in miles per gallon. The `Linear_Regression` class fits `y = w.x + b` by gradient descent on the mean squared error, and the notebook works through the R-squared theory: `SS_res`, `SS_tot`, why R-squared is the fraction of variance the model accounts for, why it can go negative on held-out data, and why adjusted R-squared exists. Weight alone gives a test R-squared of 0.766, and all seven features together give 0.843 at an RMSE of 3.19 mpg.
+
+The closed-form normal equation is implemented alongside it as a check, and gradient descent lands on the same coefficients to within 5.4e-14. Feature scaling is shown rather than asserted: with raw features gradient descent either diverges to infinity in 28 iterations or, at a learning rate small enough to survive, crawls to an R-squared of -0.30. The noise-column experiment confirms that training R-squared rises every time a useless random feature is added while adjusted R-squared falls.
+
+### Logistic Regression
+<hr>
+`logistic_regression_from_scratch.ipynb` - covers both the two-class and the many-class case. The `Logistic_Regression` class puts a sigmoid on a linear score, so the model is linear in the log-odds, and trains on binary cross-entropy. The `Softmax_Regression` class generalises it to three classes with the softmax, trained on categorical cross-entropy. The notebook derives why squared error is not used here, and why the sigmoid derivative cancelling against the log-loss derivative leaves the same clean gradient in both cases.
+
+On the banknote data a single feature reaches 84.6% and all four reach 98.3%; the softmax reaches 98.2% on the Iris training set. The sigmoid and softmax functions are plotted in their own right, and the notebook asserts the identities directly - softmax rows sum to 1 to within 2.2e-16, and at two classes the softmax equals the sigmoid of the score difference with a maximum difference of exactly zero.
+
+### Random Forest
+<hr>
+`random_forest_from_scratch.ipynb` - predicts the presence of heart disease. A `Decision_Tree` splits on `feature <= threshold`, picking the split that most reduces Gini impurity, and `Random_Forest` grows 100 of them, each on a bootstrap sample and each considering only a random subset of features at every split. Predictions are a majority vote. Trees split on thresholds, so no scaling is needed anywhere.
+
+A single tree scores 1.000 on the training rows and 0.773 on the test set - it memorises. The forest reaches 0.867, and the out-of-bag score, which costs nothing extra because each tree skips about a third of the rows, comes to 0.833. The measured out-of-bag fraction is 0.370 against the predicted `(1 - 1/n)^n = 0.367`. The depth sweep shows the single tree peaking at depth 3 and decaying afterwards while the forest holds steady at every depth.
+
+### XGBoost
+<hr>
+`xgboost_from_scratch.ipynb` - the same heart disease problem, so bagging and boosting can be compared directly. Where the forest grows independent trees in parallel to cut variance, boosting grows them in sequence, each fitted to the gradients left over by the ones before it. The notebook derives the second-order method properly: the Taylor expansion of the loss, the leaf weight `-G/(H+lambda)` that falls out of it, the similarity score, and the split gain with its `gamma` penalty.
+
+Test log loss bottoms at 0.364 on round 65 and then climbs for the remaining rounds while training loss keeps falling - the overfitting signature that a random forest does not have. Of 277,616 candidate splits scored, 35.6% are rejected by `gamma` and only 932 are taken; 157 nodes had a genuinely positive gain and were still left as leaves. Splitting stops entirely at round 160, after which `gamma` prunes every tree down to a single leaf.
+
 ### Coming next
 <hr>
 3D CNN, Recurrent Neural Networks and Transformers.
@@ -49,9 +73,17 @@ The <a href="https://archive.ics.uci.edu/dataset/229/skin+segmentation"> data </
 <hr>
 The <a href="https://archive.ics.uci.edu/dataset/15/breast+cancer+wisconsin+original"> data </a> contains 699 tumour samples with 9 features - `clump-thickness`, `uniformity-of-cell-size`, `uniformity-of-cell-shape`, `marginal-adhesion`, `single-epithelial-cell-size`, `bare-nuclei`, `bland-chromatin`, `normal-nucleoli` and `mitoses` - each recorded on a scale of 1 to 10, with `class` as the output label where 2 is benign and 4 is malignant. 16 rows have a missing `bare-nuclei` value and are dropped, leaving 683. Because every feature already shares the same scale, no scaling is needed before measuring distances.
 
+### Auto MPG
+<hr>
+The <a href="https://archive.ics.uci.edu/dataset/9/auto+mpg"> data </a> contains 398 cars with 7 features - `displacement`, `cylinders`, `horsepower`, `weight`, `acceleration`, `model-year` and `origin` - and fuel economy in miles per gallon as the output label, ranging from 9.0 to 46.6. Six rows have a missing `horsepower` value and are dropped, leaving 392. This is the only dataset in the folder with a continuous target rather than a class label, which is what the regression notebook needs, and `weight` alone predicts it strongly enough to draw a fitted line through.
+
+### Banknote Authentication
+<hr>
+The <a href="https://archive.ics.uci.edu/dataset/267/banknote+authentication"> data </a> contains 1,372 banknotes with 4 features taken from photographs - `variance`, `skewness`, `curtosis` and `entropy` of the wavelet-transformed image - and `class` as the output label, where the two classes are genuine and forged. The split is reasonably even at 762 to 610 and the classes are close to separable on the full feature set, which makes it a clean test for a linear classifier.
+
 ### Heart Disease Samples
 <hr>
-The <a href="https://archive.ics.uci.edu/dataset/45/heart+disease"> data </a> contains 303 instances of patient samples with 13 features determining the presence of a heart diease. Experiments have concentrated on simply attempting to distinguish presence (values 1,2,3,4) from absence (value 0), however due to the usage on a clustering model, only 2 clusters for 0 (absence) and 1(presence) was used. 
+The <a href="https://archive.ics.uci.edu/dataset/45/heart+disease"> data </a> contains 303 instances of patient samples with 13 features determining the presence of a heart diease. Experiments have concentrated on simply attempting to distinguish presence (values 1,2,3,4) from absence (value 0), however due to the usage on a clustering model, only 2 clusters for 0 (absence) and 1(presence) was used. Four rows are missing `ca` and two are missing `thal`, so 297 remain once they are dropped. The tree models use the same binary presence/absence target and need no scaling, since a tree splits on thresholds rather than distances. 
 
 ### Portuguese Bank Marketing Campaigns
 <hr>
