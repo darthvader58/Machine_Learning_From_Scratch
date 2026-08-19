@@ -48,3 +48,57 @@ cifar-10 and modelnet10. UCI sets come via `fetch_ucirepo(id=...)` and are cache
 Print: the script path, the GIF path, its size in MB, frame count, and one sentence on what the
 animation shows. If you could not hit the size budget or the concept did not work, say so
 plainly rather than shipping something misleading.
+
+---
+
+# Manim addendum
+
+Manim 0.19.2 is installed and verified working. LaTeX lives in a **user tree**, so your
+environment must carry both paths:
+
+```bash
+export PATH="/Library/TeX/texbin:/opt/homebrew/bin:$PATH"
+```
+
+`/Library/TeX/texbin` gives `latex`; `/opt/homebrew/bin` gives `dvisvgm`. Without the second,
+Manim raises `FileNotFoundError: 'dvisvgm'` only when it first tries to typeset - the scene
+builds fine up to that point, so the failure looks unrelated. The packages are installed under
+`~/Library/texmf` via `tlmgr --usermode`, which is already on kpathsea's search path.
+
+## Rendering to a GIF
+
+Do NOT use Manim's `--format=gif`; it writes a naive per-frame palette and the file comes out
+several times larger than it needs to be. Render mp4, then convert:
+
+```bash
+export PATH="/Library/TeX/texbin:/opt/homebrew/bin:$PATH"
+cd <your scratch dir>
+/opt/anaconda3/envs/tf_mps/bin/python -m manim -qm --format=mp4 -o <name> scene.py <SceneClass>
+bash /Users/shashwatraj/Machine_Learning_From_Scratch/animations/gif_from_mp4.sh \
+  media/videos/scene/720p30/<name>.mp4 \
+  /Users/shashwatraj/Machine_Learning_From_Scratch/animations/gifs/<name>.gif 640 15
+```
+
+`-qm` is 720p30. The helper does a two-pass palettegen/paletteuse downscale to 640px at 15 fps,
+prints the final size, and is what keeps these inside the 1.5 MB cap.
+
+## Structure your script so it renders itself
+
+Your deliverable `animations/manim_scenes/<name>.py` must regenerate the GIF when run with no
+arguments from the repo root, same contract as the matplotlib scenes. Put the Manim invocation
+and the ffmpeg conversion in a `if __name__ == '__main__':` block that shells out, so
+`render_all.sh` picks it up.
+
+## Manim style notes
+
+- Default frame is 14.22 x 8 units, origin at centre. Keep content inside roughly x in [-6.5, 6.5]
+  and y in [-3.5, 3.5] or it will be cropped at 640px.
+- `MathTex` for equations, `Tex` for prose, `Text` for plain labels. `MathTex` takes LaTeX, so
+  `\tfrac` and friends are fine here - unlike matplotlib mathtext.
+- Break equations into separate `MathTex` substrings when you want to `Transform`, `Indicate` or
+  recolour one part. Transforming a whole equation into another whole equation reads as a cut;
+  transforming matched sub-terms is what makes the algebra look inevitable.
+- Colour the same symbol the same way every time it appears. That consistency is most of what
+  makes this style readable.
+- 5-10 seconds. Use `self.wait()` generously - viewers need time to read an equation.
+- Seed any randomness so the render is reproducible.
