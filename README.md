@@ -13,7 +13,10 @@ regression/        linear_regression, ridge_lasso_elasticnet
 classification/    logistic_regression, k_nearest_neighbors, support_vector_machine,
                    naive_bayes, lda_qda, random_forest, xgboost
 clustering/        k-means, mean_shift, dbscan, birch, gmm, dirichlet_process_mixture
-neural_networks/   mlp, 2d_cnn, 3d_cnn, autoencoder, rnn_lstm, transformer, bert
+dimensionality_reduction/
+                   pca, ica, tsne
+neural_networks/   mlp, 2d_cnn, 3d_cnn, autoencoder, rnn_lstm, transformer, bert, gan
+animations/        one animation per notebook, with the scripts that build them
 ```
 
 ## Regression
@@ -33,6 +36,10 @@ The closed-form normal equation is implemented alongside it as a check, and grad
 
 Lasso sets 42 of 100 coefficients to exactly zero and still matches ridge on test R-squared at 0.656, against 0.647 for ordinary least squares. The more useful result is the training-size sweep: at 80 training rows OLS scores a test R-squared of -1.09, worse than predicting the mean, while ridge holds 0.594. Regularisation earns its place when data is scarce relative to the number of features, not merely when features are correlated.
 
+![lasso_l1_geometry](animations/gifs/lasso_l1_geometry.gif)
+
+*A growing RSS contour first touches the L2 disc at a generic point, but touches the L1 diamond at a corner - and the corners sit on the axes, which is why lasso produces coefficients that are exactly zero.*
+
 ## Classification
 ### Logistic Regression
 <hr>
@@ -51,6 +58,10 @@ On the banknote data a single feature reaches 84.6% and all four reach 98.3%; th
 ### Support Vector Machine
 <hr>
 `classification/support_vector_machine.ipynb` - separates `Iris-setosa` from `Iris-versicolor` using the two petal measurements. The `Support_Vector_Machine` class searches for the widest margin directly: it shrinks `w` step by step, keeps every candidate that satisfies `y * (w . x + b) >= 1` for all points, and takes the one with the smallest magnitude. The notebook derives why the margin width is `2/|w|`, so minimising `|w|` is the same as maximising the margin. It separates all 100 flowers correctly with a margin of 1.27, and draws the boundary, the two margin lines and the support vectors that hold them in place. This search needs a problem a straight line can split perfectly, which is why those two clearly separated species were used.
+
+![svm_margin](animations/gifs/svm_margin.gif)
+
+*Many lines separate the two species; only one maximises the gap. Fixing the margin lines at plus and minus one gives margin = 2/||w||, so widening the margin and shrinking w are the same request.*
 
 ### Naive Bayes
 <hr>
@@ -139,12 +150,20 @@ On this data GMM and K-Means produce the identical partition, 0 of 178 wines dif
 
 At `alpha = 1` the posterior settles on a mode of 7 components against 3 true cultivars, with purity 0.926 and ARI 0.619 - over-segmentation is the normal and expected behaviour, and the notebook reports it rather than tuning until it outputs 3. The `alpha` sweep shows the count rising from 3.03 at `alpha = 0.05` to 31.3 at `alpha = 100`, tracked against the `alpha*log(1 + N/alpha)` prediction. The real point is that choosing `k` has been traded for choosing `alpha` and the base measure, not eliminated.
 
+![crp_seating](animations/gifs/crp_seating.gif)
+
+*Customers join a table in proportion to its size or open a new one in proportion to alpha. The door never closes, so the number of clusters is unbounded and inferred rather than chosen.*
+
 ## Neural Networks
 ### Multi-Layer Perceptron
 <hr>
 `neural_networks/mlp.ipynb` - classifies the handwritten digits with a plain feed-forward network. The notebook derives the backpropagation recurrence rather than stating it, starting from `delta = p - y` at the output and chaining backwards. Depth is measured rather than assumed: 0 hidden layers gives 0.954, one gives 0.967, two gives 0.976, three gives 0.977, so the returns flatten quickly. The no-activation experiment shows why non-linearity matters - remove the ReLU and the network collapses to a single linear map no matter how many layers it has.
 
 The comparison with the convolutional notebook is the useful part. The MLP reaches 0.977 with 13,130 weights against the CNN's 0.979 with 1,610, so the CNN matches it using an eighth of the parameters. The first-layer weights drawn as 8x8 images explain the gap: they are whole-image templates tied to absolute position, which is exactly what weight sharing in a convolution avoids.
+
+![backprop_chain](animations/gifs/backprop_chain.gif)
+
+*Backpropagation is the chain rule on a composition. The transpose sends error back along the forward edges; the ReLU derivative gates it to 0 or 1.*
 
 ### 2D Convolutional Neural Network
 <hr>
@@ -178,11 +197,19 @@ The linear autoencoder matches PCA almost exactly - at a bottleneck of 8 the rec
 
 The RNN reaches 89.2% and the LSTM 83.9% against a 52.2% baseline, so the gated model does not win on accuracy here, and the notebook says so. The real result is the gradient measurement. Tracking the norm of the loss gradient with respect to the hidden state at every timestep shows the RNN's signal decaying by a factor of 12 across 60 steps while the LSTM's ratio is 0.954, essentially flat, with a per-step decay of 1.0008. The LSTM does fix the vanishing gradient - it simply is not needed on 60-base sequences whose discriminative motif sits in the middle.
 
+![bptt_vanishing](animations/gifs/bptt_vanishing.gif)
+
+*The gradient reaching an early time step is a product of Jacobians, so it decays geometrically. The LSTM cell state carries an additive, gated path that does not.*
+
 ### Transformers
 <hr>
 `neural_networks/transformer.ipynb` - two parts. The encoder classifies the same DNA sequences and reaches 95.5%, the best result on this dataset, using scaled dot-product attention, multi-head splitting, sinusoidal positional encoding, residuals and layer normalisation, all with hand-written backward passes including through the softmax inside attention. Removing the positional encoding drops it to 55.2%, near the baseline, confirming that attention on its own is permutation-equivariant and cannot locate anything.
 
 The second part adds a decoder and trains it to produce the reverse complement of a sequence, a genuine sequence-to-sequence task on the same data. Causal masking, cross-attention, teacher forcing and greedy autoregressive decoding are all implemented. The mask is verified directly rather than assumed: with it, perturbing later inputs changes earlier outputs by exactly 0.0; without it, by 1.8e-2, which is what would let teacher-forced training read the answers.
+
+![attention_scaling](animations/gifs/attention_scaling.gif)
+
+*Scores are a sum of d_k unit-variance terms, so their spread grows as sqrt(d_k). Without the divisor the softmax saturates and its gradient vanishes.*
 
 ### BERT
 <hr>
@@ -190,10 +217,30 @@ The second part adds a decoder and trains it to produce the reverse complement o
 
 The claim that pretraining helps most when labelled data is scarce is tested rather than asserted, across five training-set sizes with three seeds each. At 50 labels the pretrained model reaches 0.679 against 0.537 from random initialisation, a gap of 14 points, where the from-scratch model is barely above the 0.519 baseline. At 100 labels the gap is 15 points. By the full 2,552 labels it narrows to 5 points, 0.921 against 0.868. The shape of that curve is the result.
 
-### Coming next
+### Generative Adversarial Network
 <hr>
-Principal Component Analysis (PCA), Individual Component Analysis (ICA), t-SNE, GANs, Basic RecSys.
-Reinforcement Learning
+`neural_networks/gan.ipynb` - a generator and a discriminator trained against each other, both written by hand with no autodiff. This is the only notebook here where no single scalar is being minimised: the two networks optimise opposing objectives, so `min_G max_D V(D,G)`, and "converged" means an equilibrium rather than a minimum. The loss curves are therefore flat and oscillating by design, and progress is measured outside the objective by counting how many modes the generator covers.
+
+The non-saturating trick is derived rather than asserted. The gradient ratio between the two generator losses is exactly `(1-D)/D`, measured here reaching 9.29e9 once the discriminator drives `D(G(z))` toward zero - which is why maximising `log D(G(z))` replaces minimising `log(1 - D(G(z)))`. The optimal discriminator `D*(x) = p_data/(p_data + p_g)` is verified numerically, with `V(D*,G)` matching `2*JSD - log4` to 8.5e-08. Gradient checks on both networks agree to 3.37e-11.
+
+Both failure modes are shown rather than described. A 2D ring of eight Gaussians is the vehicle: a healthy run captures 8/8 modes at a mode-histogram KL of 0.0286, letting the generator run ahead collapses it to 1/8 at a KL of exactly `log 8`, and letting the discriminator run ahead pins its accuracy on fakes at 1.000 and leaves 3/8. Two findings run against the folklore and are called out as such: the saturating loss still trains this problem fine under Adam, and the non-saturating loss does not fix non-convergence - on the Dirac GAN it converts a divergent spiral into a limit cycle that crosses zero 63 times without settling.
+
+## Dimensionality Reduction
+### Principal Component Analysis
+<hr>
+`dimensionality_reduction/pca.ipynb` - derives PCA twice, as the directions of maximum projected variance and as the best rank-k reconstruction, and shows the two give the same answer. Centring is shown to be mandatory rather than cosmetic, eigenvalues are related to the variance along each component, and the SVD route is compared against eigendecomposing the covariance matrix with the numerical argument for preferring it. Cross-links to the autoencoder notebook, which proves a linear autoencoder converges to this same subspace.
+
+### Independent Component Analysis
+<hr>
+`dimensionality_reduction/ica.ipynb` - solves a different problem from PCA: PCA finds uncorrelated components, ICA finds statistically independent ones. The notebook builds the blind-source-separation setup `x = As`, derives the FastICA fixed-point iteration by hand, and explains the one fact that governs everything else - Gaussian sources cannot be separated at all, because any rotation of independent Gaussians is again independent Gaussians, which is why non-Gaussianity is the contrast function. PCA is run on the same mixture and shown failing to separate it, which is the argument for ICA existing. The two inherent ambiguities, component order and scale, are stated rather than hidden.
+
+### t-SNE
+<hr>
+`dimensionality_reduction/tsne.ipynb` - builds the conditional Gaussian affinities, the symmetrised `p_ij`, and the binary search over each `sigma_i` that hits a target perplexity, which is the step most explanations skip. The KL(P||Q) gradient is derived by hand and confirmed with a finite-difference check. The heavy-tailed Student-t in the map is motivated by the crowding problem: a high-dimensional space has far more room at moderate distance than a plane can provide, and the heavy tail lets a moderate distance map to a larger one. The caveats get their own treatment, since this is where t-SNE is most often misread - cluster sizes and inter-cluster distances carry no meaning, and the result depends on perplexity and seed, shown directly by running the same data at several perplexities.
+
+## Coming next
+<hr>
+Basic recommender systems and reinforcement learning.
 
 ## Datasets
 ### Iris Flower Classification
