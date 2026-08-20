@@ -16,6 +16,8 @@ clustering/        k-means, mean_shift, dbscan, birch, gmm, dirichlet_process_mi
 dimensionality_reduction/
                    pca, ica, tsne
 neural_networks/   mlp, 2d_cnn, 3d_cnn, autoencoder, rnn_lstm, transformer, bert, gan
+recommender_systems/
+                   recommender_systems
 animations/        one animation per notebook, with the scripts that build them
 ```
 
@@ -238,9 +240,26 @@ Both failure modes are shown rather than described. A 2D ring of eight Gaussians
 <hr>
 `dimensionality_reduction/tsne.ipynb` - builds the conditional Gaussian affinities, the symmetrised `p_ij`, and the binary search over each `sigma_i` that hits a target perplexity, which is the step most explanations skip. The KL(P||Q) gradient is derived by hand and confirmed with a finite-difference check. The heavy-tailed Student-t in the map is motivated by the crowding problem: a high-dimensional space has far more room at moderate distance than a plane can provide, and the heavy tail lets a moderate distance map to a larger one. The caveats get their own treatment, since this is where t-SNE is most often misread - cluster sizes and inter-cluster distances carry no meaning, and the result depends on perplexity and seed, shown directly by running the same data at several perplexities.
 
+## Recommender Systems
+### Collaborative Filtering and Matrix Factorisation
+<hr>
+`recommender_systems/recommender_systems.ipynb` - predicts film ratings from 1,000,209 ratings by 6,040 users over 3,706 films. The defining feature is that 95.5% of the matrix is empty, which is what makes this different from ordinary regression: there is no feature vector for a user and no target column, only the pattern of which cells are filled.
+
+Four models are built in increasing order of what they assume. The **global mean** gives an RMSE of 1.1154. Adding a damped **per-user and per-item bias** takes it to 0.9085, an 18.5% improvement and the largest single step in the notebook - most of what looks like personalisation is some people rating generously and some films being better. **Item-item collaborative filtering** on bias-removed residuals reaches 0.8500 at k=20, and **matrix factorisation** fitted by hand-derived SGD reaches 0.8517, both about 24% better than the mean. The SGD updates are confirmed against finite differences to 1.7e-10.
+
+Three findings get their own treatment. The **SVD is not the answer** despite giving the optimal low-rank approximation: it needs a complete matrix, and filling the holes with zeros scores 2.4304, more than twice as bad as predicting the mean. The **factors encode genre without ever being shown one** - films sharing a genre are 37 times closer in factor space than unrelated ones, 0.0558 against 0.0015 mean cosine. And a **popularity list beats the factorisation roughly two to one on precision@K**, which is partly an artefact of holding out ratings at random and partly the real point that squared error and ranking quality are different objectives.
+
+![mf_factorization](animations/gifs/mf_factorization.gif)
+
+*The rating matrix has 22,384,240 cells; P and Q hold 311,872. That bottleneck is why every empty cell gets a value, and why 312k numbers cannot memorise 22M cells.*
+
+![mf_learning](animations/gifs/mf_learning.gif)
+
+*One fit, three views: the sparse block it was shown, what the model predicts for every cell of it, and the item factors organising by genre. The train/test gap in the title widens every epoch.*
+
 ## Coming next
 <hr>
-Basic recommender systems and reinforcement learning.
+Reinforcement learning.
 
 ## Datasets
 ### Iris Flower Classification
@@ -303,3 +322,6 @@ The <a href="https://www.cs.toronto.edu/~kriz/cifar.html"> data </a> contains 60
 <hr>
 The <a href="https://modelnet.cs.princeton.edu/"> data </a> contains 4,899 CAD models of household objects across 10 categories, supplied as `.OFF` triangle meshes rather than arrays. It is used because it is genuinely volumetric, which nothing in the UCI collection is. The 3D CNN parses the meshes and voxelises them from scratch into 16x16x16 occupancy grids, using five categories and 900 models. Occupancy comes out at 13.7%, since voxelising a surface produces a hollow shell rather than a solid. The archive is about 473 MB and is cached into `data/`.
 
+### MovieLens 1M
+<hr>
+The <a href="https://grouplens.org/datasets/movielens/1m/"> data </a> is 1,000,209 ratings from 1 to 5 given by 6,040 users to 3,706 films, together with each film's title and genre labels. It fills 4.5% of the user-by-film matrix. Used by the recommender systems notebook, which needs a genuine ratings matrix - a shape the UC Irvine repository does not carry. The 100,000-rating version of the same data is too sparse per film for the later models to separate from the baseline, which the notebook explains.
